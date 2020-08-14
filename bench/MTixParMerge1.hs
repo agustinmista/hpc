@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module MTixParMerge1 where
 
+import GHC.Conc
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import System.FilePath
@@ -75,22 +76,41 @@ tixToMTix ticker (Tix xs) =
 -- ** this is now done in parallel **
 mergeMTixs :: [MTix] -> MTix
 mergeMTixs [] = error "mergeMTixs: empty input"
-mergeMTixs xs = parFold1 mergeMTix xs
-  where
-    mergeMTix (MTix ts1) (MTix ts2) =
-      MTix (zipWith mergeMTixModule ts1 ts2)
-    mergeMTixModule (MTixModule n1 h1 i1 tks1) (MTixModule n2 h2 i2 tks2)
-      | n1 == n2 && h1 == h2 =
-          MTixModule n1 h1 (i1 + i2) (zipWith (<>) tks1 tks2)
-      | otherwise =
-          error $ "mergeMTixs: hash " <> show (h1, h2) <>
-                  " or module name "  <> show (n1, n2) <> " mismatch"
+mergeMTixs xs = parFold1 rseq mergeMTix xs
+-- mergeMTixs xs = foldr1 mergeMTix xs
 
-parFold1 :: NFData a => (a -> a -> a) -> [a] -> a
-parFold1 f [x] = x
-parFold1 f xs = parFold1 f (reduce1 f xs `using` parList rdeepseq)
+mergeMTix :: MTix -> MTix -> MTix
+mergeMTix (MTix ts1) (MTix ts2) = do
+  -- MTix (zipWith mergeMTixModule ts1 ts2)
+  MTix (parZipWith rdeepseq mergeMTixModule ts1 ts2)
+
+mergeMTixModule :: MTixModule -> MTixModule -> MTixModule
+mergeMTixModule (MTixModule n1 h1 i1 tks1) (MTixModule n2 h2 i2 tks2)
+  | n1 == n2 && h1 == h2 && i1 == i2 =
+      -- let taskSize = i1 `div` (numCapabilities * 4) in
+      -- MTixModule n1 h1 i1 (zipWith (<>) tks1 tks2)
+      MTixModule n1 h1 i1 (zipWith (<>) tks1 tks2)
+  | otherwise =
+      error $ "mergeMTixs: hash " <> show (h1, h2) <>
+              " or module name "  <> show (n1, n2) <>
+              " or list size "    <> show (i1, i2) <>
+              " mismatch"
+
+parFold1 :: Strategy a -> (a -> a -> a) -> [a] -> a
+parFold1 s f [x] = x
+parFold1 s f xs
+  | length xs < numCapabilities =
+      parFold1 s f (reduce1 f xs `using` parList s)
+  | otherwise =
+      parFold1 s f (reduce1 f xs `using` parListChunk (length xs `div` numCapabilities) s)
 
 reduce1 :: (a -> a -> a) -> [a] -> [a]
 reduce1 _ [] = []
 reduce1 _ [x] = [x]
 reduce1 f (x:y:ys) = f x y : reduce1 f ys
+
+parZipWith :: Strategy a -> (a -> a -> a) -> [a] -> [a] -> [a]
+parZipWith s f xs ys = zipWith f xs ys `using` parList s
+
+parZipWithChunk :: Int -> Strategy a -> (a -> a -> a) -> [a] -> [a] -> [a]
+parZipWithChunk n s f xs ys = zipWith f xs ys `using` parListChunk n s

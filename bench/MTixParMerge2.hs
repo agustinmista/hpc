@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module MTixParMerge2 where
 
+import GHC.Conc
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import System.FilePath
@@ -79,22 +80,24 @@ mergeMTixs xs = foldr1 mergeMTix xs
 
 mergeMTix :: MTix -> MTix -> MTix
 mergeMTix (MTix ts1) (MTix ts2) = do
-  MTix (parZipWith rdeepseq mergeMTixModule ts1 ts2)
+  MTix (zipWith mergeMTixModule ts1 ts2)
 
 mergeMTixModule :: MTixModule -> MTixModule -> MTixModule
 mergeMTixModule (MTixModule n1 h1 i1 tks1) (MTixModule n2 h2 i2 tks2)
-  | n1 == n2 && h1 == h2 = do
-      -- MTixModule n1 h1 (i1 + i2) (parZipWithChunk 200 rdeepseq (<>) tks1 tks2)
-      MTixModule n1 h1 (i1 + i2) (parZipWithChunk 100 rdeepseq (<>) tks1 tks2)
+  | n1 == n2 && h1 == h2 && i1 == i2 =
+      MTixModule n1 h1 i1 (parZipWithChunk 200 rdeepseq (<>) tks1 tks2)
+      -- MTixModule n1 h1 (i1 + i2) (zipWith (<>) tks1 tks2)
   | otherwise =
       error $ "mergeMTixs: hash " <> show (h1, h2) <>
-              " or module name "  <> show (n1, n2) <> " mismatch"
+              " or module name "  <> show (n1, n2) <>
+              " or list size "    <> show (i1, i2) <>
+              " mismatch"
 
 parZipWith :: Strategy a -> (a -> a -> a) -> [a] -> [a] -> [a]
-parZipWith s f xs ys = parMap s (uncurry f) (zip xs ys)
+parZipWith s f xs ys = zipWith f xs ys `using` parList s
 
 parZipWithChunk :: Int -> Strategy a -> (a -> a -> a) -> [a] -> [a] -> [a]
-parZipWithChunk n s f xs ys = parMapChunk n s (uncurry f) (zip xs ys)
+parZipWithChunk n s f xs ys = zipWith f xs ys `using` parListChunk n s
 
 parMapChunk :: Int -> Strategy b -> (a -> b) -> [a] -> [b]
 parMapChunk n s f = (`using` parListChunk n s) . map f
