@@ -1,0 +1,1 @@
+Mix "test/src/Test/QuickCheck/Classes/Compat.hs" 2020-06-19 11:41:26.669026486 UTC 4022170961 8 [(58:16-58:19,ExpBox False),(58:7-58:19,ExpBox False),(58:1-58:19,TopLevelBox ["eq1"])]

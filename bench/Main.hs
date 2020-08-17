@@ -11,153 +11,192 @@ import Control.Concurrent
 import Criterion.Main
 import Criterion.Types
 
-import qualified MTix              as Base
-import qualified MTixParRead       as ParRead
-import qualified MTixParMerge1     as ParMerge1
-import qualified MTixParMerge2     as ParMerge2
-import qualified MTixParReadMerge1 as ParReadMerge1
-import qualified MTixParProject1   as ParProject1
-import qualified MTixParProject2   as ParProject2
+-- Sequential versions
+import qualified MTix.Seq.List        as SeqList
+import qualified MTix.Seq.Map         as SeqMap
+import qualified MTix.Seq.Seq         as SeqSeq
 
-dataDir :: FilePath
-dataDir = "bench" </> "data"
+-- Parallel versions
+-- import qualified MTixParRead       as ParRead
+-- import qualified MTixParMerge1     as ParMerge1
+-- import qualified MTixParMerge2     as ParMerge2
+-- import qualified MTixParReadMerge1 as ParReadMerge1
+-- import qualified MTixParProject1   as ParProject1
+-- import qualified MTixParProject2   as ParProject2
+
+----------------------------------------
+-- FilePath utilities
 
 resultsDir :: FilePath
 resultsDir = "bench" </> "results"
 
-listDataFiles :: FilePath -> IO [FilePath]
-listDataFiles f = do
-  basenames <- listDirectory (dataDir </> f)
-  return ((\b -> dataDir </> f </> b) <$> basenames)
+dataDir :: FilePath
+dataDir = "bench" </> "data"
+
+tixDir :: FilePath -> FilePath
+tixDir x = dataDir </> x </> "tix"
+
+mixDir :: FilePath -> FilePath
+mixDir x = dataDir </> x </> "mix"
+
+listTixFiles :: FilePath -> IO [FilePath]
+listTixFiles f = do
+  basenames <- listDirectory (tixDir f)
+  return ((tixDir f </>) <$> basenames)
+
+----------------------------------------
+-- Benchmark drivers
 
 benchReadMTixs :: NFData mtix => String -> ([FilePath] -> IO [mtix]) -> [FilePath] -> [Benchmark]
 benchReadMTixs name readOp inputs =
   [ bench (name <> "/" <> show n) (nfAppIO readOp (take n inputs))
-  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ]
-  ]
-  where
-    len = fromIntegral (length inputs)
+  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ] ]
+  where len = fromIntegral (length inputs)
 
 benchMergeMTixs :: NFData mtix => String -> ([mtix] -> mtix) -> [mtix] -> [Benchmark]
 benchMergeMTixs name mergeOp inputs =
   [ bench (name <> "/" <> show n) (nf mergeOp (take n inputs))
-  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ]
-  ]
-  where
-    len = fromIntegral (length inputs)
+  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ] ]
+  where len = fromIntegral (length inputs)
 
 benchProjectMTix :: NFData mtix => String -> ([String] -> mtix -> mtix) -> [FilePath] -> mtix -> [Benchmark]
-benchProjectMTix name op props mtix =
-  [ bench (name <> "/" <> show n) (nf (flip op mtix) (takeBaseName <$> take n props))
-  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ]
-  ]
-  where
-    len = fromIntegral (length props)
+benchProjectMTix name projOp props mtix =
+  [ bench (name <> "/" <> show n) (nf (flip projOp mtix) (takeBaseName <$> take n props))
+  | n <- 1 : [ round ((len / 9) * i) | i <- [1..9] ] ]
+  where len = fromIntegral (length props)
+
+benchCoverageMTix :: NFData mtix => String -> (mtix -> IO [(String, Double)]) -> mtix -> [Benchmark]
+benchCoverageMTix name coverOp mtix =
+  [ bench name (nfAppIO coverOp mtix) ]
+
+
+----------------------------------------
+-- Benchmarks
+
+sequentialBenchmarks :: IO ()
+sequentialBenchmarks = do
+
+  cores     <- getNumCapabilities
+
+  xmonad    <- listTixFiles "xmonad"
+  primitive <- listTixFiles "primitive"
+  bst       <- listTixFiles "bst"
+
+  -- Some precomputed values needed for benchmarks
+
+  -- :: [MTix]
+  !xmonad_seq_list    <- force <$> SeqList.readMTixs xmonad
+  !primitive_seq_list <- force <$> SeqList.readMTixs primitive
+  !bst_seq_list       <- force <$> SeqList.readMTixs bst
+
+  !xmonad_seq_map    <- force <$> SeqMap.readMTixs xmonad
+  !primitive_seq_map <- force <$> SeqMap.readMTixs primitive
+  !bst_seq_map       <- force <$> SeqMap.readMTixs bst
+
+  !xmonad_seq_seq    <- force <$> SeqSeq.readMTixs xmonad
+  !primitive_seq_seq <- force <$> SeqSeq.readMTixs primitive
+  !bst_seq_seq       <- force <$> SeqSeq.readMTixs bst
+
+  -- :: MTix
+  !xmonad_seq_list_mtix    <- force <$> SeqList.readMergeMTixs xmonad
+  !primitive_seq_list_mtix <- force <$> SeqList.readMergeMTixs primitive
+  !bst_seq_list_mtix       <- force <$> SeqList.readMergeMTixs bst
+
+  !xmonad_seq_map_mtix     <- force <$> SeqMap.readMergeMTixs  xmonad
+  !primitive_seq_map_mtix  <- force <$> SeqMap.readMergeMTixs  primitive
+  !bst_seq_map_mtix        <- force <$> SeqMap.readMergeMTixs  bst
+
+  !xmonad_seq_seq_mtix     <- force <$> SeqSeq.readMergeMTixs  xmonad
+  !primitive_seq_seq_mtix  <- force <$> SeqSeq.readMergeMTixs  primitive
+  !bst_seq_seq_mtix        <- force <$> SeqSeq.readMergeMTixs  bst
+
+  ----------------------------------------
+  -- readMTixs
+
+  putStrLn "******* Benchmarking readMTixs"
+  let csv = resultsDir </> "readMTixs" <.> show cores <.> "csv"
+  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+
+    [ benchReadMTixs "SeqList/xmonad"    SeqList.readMTixs xmonad
+    , benchReadMTixs "SeqList/primitive" SeqList.readMTixs primitive
+    , benchReadMTixs "SeqList/bst"       SeqList.readMTixs bst
+
+    , benchReadMTixs "SeqMap/xmonad"     SeqMap.readMTixs  xmonad
+    , benchReadMTixs "SeqMap/primitive"  SeqMap.readMTixs  primitive
+    , benchReadMTixs "SeqMap/bst"        SeqMap.readMTixs  bst
+
+    , benchReadMTixs "SeqSeq/xmonad"     SeqSeq.readMTixs  xmonad
+    , benchReadMTixs "SeqSeq/primitive"  SeqSeq.readMTixs  primitive
+    , benchReadMTixs "SeqSeq/bst"        SeqSeq.readMTixs  bst
+    ]
+
+  ----------------------------------------
+  putStrLn "******* Benchmarking mergeMTixs"
+  let csv = resultsDir </> "mergeMTixs" <.> show cores <.> "csv"
+  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+
+    [ benchMergeMTixs "SeqList/xmonad"    SeqList.mergeMTixs xmonad_seq_list
+    , benchMergeMTixs "SeqList/primitive" SeqList.mergeMTixs primitive_seq_list
+    , benchMergeMTixs "SeqList/bst"       SeqList.mergeMTixs bst_seq_list
+
+    , benchMergeMTixs "SeqMap/xmonad"     SeqMap.mergeMTixs  xmonad_seq_map
+    , benchMergeMTixs "SeqMap/primitive"  SeqMap.mergeMTixs  primitive_seq_map
+    , benchMergeMTixs "SeqMap/bst"        SeqMap.mergeMTixs  bst_seq_map
+
+    , benchMergeMTixs "SeqSeq/xmonad"     SeqSeq.mergeMTixs  xmonad_seq_seq
+    , benchMergeMTixs "SeqSeq/primitive"  SeqSeq.mergeMTixs  primitive_seq_seq
+    , benchMergeMTixs "SeqSeq/bst"        SeqSeq.mergeMTixs  bst_seq_seq
+    ]
+
+  ----------------------------------------
+  putStrLn "******* Benchmarking projectMTixs"
+  let csv = resultsDir </> "projectMTix" <.> show cores <.> "csv"
+  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+
+    [ benchProjectMTix "SeqList/xmonad"    SeqList.projectMTix xmonad    xmonad_seq_list_mtix
+    , benchProjectMTix "SeqList/primitive" SeqList.projectMTix primitive primitive_seq_list_mtix
+    , benchProjectMTix "SeqList/bst"       SeqList.projectMTix bst       bst_seq_list_mtix
+
+    , benchProjectMTix "SeqMap/xmonad"     SeqMap.projectMTix  xmonad    xmonad_seq_map_mtix
+    , benchProjectMTix "SeqMap/primitive"  SeqMap.projectMTix  primitive primitive_seq_map_mtix
+    , benchProjectMTix "SeqMap/bst"        SeqMap.projectMTix  bst       bst_seq_map_mtix
+
+    , benchProjectMTix "SeqSeq/xmonad"     SeqSeq.projectMTix  xmonad    xmonad_seq_seq_mtix
+    , benchProjectMTix "SeqSeq/primitive"  SeqSeq.projectMTix  primitive primitive_seq_seq_mtix
+    , benchProjectMTix "SeqSeq/bst"        SeqSeq.projectMTix  bst       bst_seq_seq_mtix
+    ]
+
+  ----------------------------------------
+  putStrLn "******* Benchmarking coverageMTix"
+  let csv = resultsDir </> "coverageMTix" <.> show cores <.> "csv"
+  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+
+    [ benchCoverageMTix "SeqList/xmonad"    (SeqList.expCoverMTix (mixDir "xmonad"))    xmonad_seq_list_mtix
+    , benchCoverageMTix "SeqList/primitive" (SeqList.expCoverMTix (mixDir "primitive")) primitive_seq_list_mtix
+    , benchCoverageMTix "SeqList/bst"       (SeqList.expCoverMTix (mixDir "bst"))       bst_seq_list_mtix
+
+    , benchCoverageMTix "SeqMap/xmonad"     (SeqMap.expCoverMTix  (mixDir "xmonad"))    xmonad_seq_map_mtix
+    , benchCoverageMTix "SeqMap/primitive"  (SeqMap.expCoverMTix  (mixDir "primitive")) primitive_seq_map_mtix
+    , benchCoverageMTix "SeqMap/bst"        (SeqMap.expCoverMTix  (mixDir "bst"))       bst_seq_map_mtix
+
+    , benchCoverageMTix "SeqSeq/xmonad"     (SeqSeq.expCoverMTix  (mixDir "xmonad"))    xmonad_seq_seq_mtix
+    , benchCoverageMTix "SeqSeq/primitive"  (SeqSeq.expCoverMTix  (mixDir "primitive")) primitive_seq_seq_mtix
+    , benchCoverageMTix "SeqSeq/bst"        (SeqSeq.expCoverMTix  (mixDir "bst"))       bst_seq_seq_mtix
+    ]
+
+
+----------------------------------------
+-- Entry point
 
 main :: IO ()
 main = do
-  cores     <- getNumCapabilities
-  xmonad    <- listDataFiles "xmonad"
-  primitive <- listDataFiles "primitive"
-  bst       <- listDataFiles "bst"
-
-  -- ----------------------------------------
-  -- -- Sequential vs parallel read
-
-  -- putStrLn "******* Benchmarking readMTixs"
-  -- let csv = resultsDir </> "readMTixs" <.> show cores <.> "csv"
-  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-
-  --   -- Sequential read
-  --   [ benchReadMTixs "Base/xmonad"    Base.readMTixs xmonad
-  --   , benchReadMTixs "Base/primitive" Base.readMTixs primitive
-  --   , benchReadMTixs "Base/bst"       Base.readMTixs bst
-  --   ] <>
-
-  --   -- Parallel read
-  --   [ benchReadMTixs "ParRead/xmonad"    ParRead.readMTixs xmonad
-  --   , benchReadMTixs "ParRead/primitive" ParRead.readMTixs primitive
-  --   , benchReadMTixs "ParRead/bst"       ParRead.readMTixs bst
-  --   ]
+  sequentialBenchmarks
+  putStrLn "Finished!"
 
   ----------------------------------------
-  -- Sequential vs parallel merge
 
-  -- !xmonad_base    <- force <$> Base.readMTixs xmonad
-  -- !primitive_base <- force <$> Base.readMTixs primitive
-  -- !bst_base       <- force <$> Base.readMTixs bst
-
-  !xmonad_par1    <- force <$> ParMerge1.readMTixs xmonad
-  -- !primitive_par1 <- force <$> ParMerge1.readMTixs primitive
-  -- !bst_par1       <- force <$> ParMerge1.readMTixs bst
-
-  -- !xmonad_par2    <- force <$> ParMerge2.readMTixs xmonad
-  -- !primitive_par2 <- force <$> ParMerge2.readMTixs primitive
-  -- !bst_par2       <- force <$> ParMerge2.readMTixs bst
-
-  -- putStrLn "******* Benchmarking mergeMTixs"
-  -- let csv = resultsDir </> "mergeMTixs" <.> show cores <.> "csv"
-  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-
-  --   -- Sequential merge
-  --   [ benchMergeMTixs "Base/xmonad"    Base.mergeMTixs xmonad_base
-  --   -- , benchMergeMTixs "Base/primitive" Base.mergeMTixs primitive_base
-  --   -- , benchMergeMTixs "Base/bst"       Base.mergeMTixs bst_base
-  --   ] <>
-
-  --   -- Parallel merge 1
-  --   [ benchMergeMTixs "ParMerge1/xmonad"    ParMerge1.mergeMTixs xmonad_par1
-  --   -- , benchMergeMTixs "ParMerge1/primitive" ParMerge1.mergeMTixs primitive_par1
-  --   -- , benchMergeMTixs "ParMerge1/bst"       ParMerge1.mergeMTixs bst_par1
-  --   ] <>
-
-  --   -- Parallel merge 2
-  --   [ benchMergeMTixs "ParMerge2/xmonad"    ParMerge2.mergeMTixs xmonad_par2
-  --   -- , benchMergeMTixs "ParMerge2/primitive" ParMerge2.mergeMTixs primitive_par2
-  --   -- , benchMergeMTixs "ParMerge2/bst"       ParMerge2.mergeMTixs bst_par2
-  --   ]
-
-  -- ----------------------------------------
-  -- -- Sequential vs parallel projection
-
-  -- !xmonad_base_mtix    <- force <$> Base.readMergeMTixs xmonad
-  -- !primitive_base_mtix <- force <$> Base.readMergeMTixs primitive
-  -- !bst_base_mtix       <- force <$> Base.readMergeMTixs bst
-
-  -- !xmonad_par_mtix    <- force <$> ParProject1.readMergeMTixs xmonad
-  -- !primitive_par_mtix <- force <$> ParProject1.readMergeMTixs primitive
-  -- !bst_par_mtix       <- force <$> ParProject1.readMergeMTixs bst
-
-  -- !xmonad_par2_mtix    <- force <$> ParProject2.readMergeMTixs xmonad
-  -- !primitive_par2_mtix <- force <$> ParProject2.readMergeMTixs primitive
-  -- !bst_par2_mtix       <- force <$> ParProject2.readMergeMTixs bst
-
-  -- putStrLn "******* Benchmarking projectMTixs"
-  -- let csv = resultsDir </> "projectMTix" <.> show cores <.> "csv"
-  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-
-  --   -- Sequential project
-  --   [ benchProjectMTix "Base/xmonad"    Base.projectMTix xmonad    xmonad_base_mtix
-  --   , benchProjectMTix "Base/primitive" Base.projectMTix primitive primitive_base_mtix
-  --   , benchProjectMTix "Base/bst"       Base.projectMTix bst       bst_base_mtix
-  --   ] <>
-
-  --   -- Parallel project 1
-  --   [ benchProjectMTix "ParProject1/xmonad"    ParProject1.projectMTix xmonad    xmonad_par_mtix
-  --   , benchProjectMTix "ParProject1/primitive" ParProject1.projectMTix primitive primitive_par_mtix
-  --   , benchProjectMTix "ParProject1/bst"       ParProject1.projectMTix bst       bst_par_mtix
-  --   ] <>
-
-  --   -- Parallel project 2
-  --   [ benchProjectMTix "ParProject2/xmonad"    ParProject2.projectMTix xmonad    xmonad_par2_mtix
-  --   , benchProjectMTix "ParProject2/primitive" ParProject2.projectMTix primitive primitive_par2_mtix
-  --   , benchProjectMTix "ParProject2/bst"       ParProject2.projectMTix bst       bst_par2_mtix
-  --   ]
-
-  threadDelay 1000000
-  -- let !mtix = Base.mergeMTixs xmonad_base
-  let !mtix = ParMerge1.mergeMTixs xmonad_par1
-  threadDelay 1000000
-  print (rnf mtix)
-
-  putStrLn "Finished!"
+  -- threadDelay 1000000
+  -- print (xmonad_par1 `deepseq` length (show (ParMerge1.mergeMTixs xmonad_par1)))
+  -- threadDelay 1000000
+  -- print (length (show (SeqList.mergeMTixs xmonad_seq_list)))
+  -- threadDelay 1000000

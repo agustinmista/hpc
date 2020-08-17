@@ -57,13 +57,15 @@ executable bench
   main-is: Main.hs
   hs-source-dirs: bench
   other-modules: 
-    MTix
-    MTixParRead
-    MTixParMerge1
-    MTixParMerge2
-    MTixParReadMerge1
-    MTixParProject1
-    MTixParProject2
+    MTix.Seq.List
+    MTix.Seq.Map
+    MTix.Seq.Seq
+    -- MTixParRead
+    -- MTixParMerge1
+    -- MTixParMerge2
+    -- MTixParReadMerge1
+    -- MTixParProject1
+    -- MTixParProject2
   ghc-options:
     -O2
     -threaded

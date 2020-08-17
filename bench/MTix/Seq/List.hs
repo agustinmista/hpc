@@ -1,11 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
-module MTix where
+module MTix.Seq.List where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import System.FilePath
 
 import Trace.Hpc.Tix
+import Trace.Hpc.Mix
 import Trace.Hpc.Util (HpcPos, fromHpcPos, writeFileUtf8, Hash)
 
 ------------------------------------------------------------------------------
@@ -18,6 +19,12 @@ showTicksCount :: TicksCount -> String
 showTicksCount ticks =
   "Ticks per property: " <>
   concatMap (\(s,n) -> "&#10" <> s <> " : " <> show n <> " ticks") ticks
+
+tick :: String -> Integer -> TicksCount
+tick s i = [(s, i)]
+
+ticksTotal :: TicksCount -> Integer
+ticksTotal = sum . fmap snd
 
 -- MTix files contaiting MTixModules
 data MTix = MTix [MTixModule]
@@ -48,11 +55,12 @@ mtixModuleHash (MTixModule _ h  _ _) = h
 mtixModuleTixs :: MTixModule -> [TicksCount]
 mtixModuleTixs (MTixModule  _ _ _ tixs) = tixs
 
+----------------------------------------
 -- Reading and merging MTixs
+
 readMergeMTixs :: [FilePath] -> IO MTix
 readMergeMTixs files = mergeMTixs <$> readMTixs files
 
--- Reading MTixs
 readMTixs :: [FilePath] -> IO [MTix]
 readMTixs = mapM readMTix
 
@@ -64,13 +72,15 @@ readMTix file = do
     Just a -> return (tixToMTix (takeBaseName file) a)
 
 tixToMTix :: String -> Tix -> MTix
-tixToMTix ticker (Tix xs) =
+tixToMTix prop (Tix xs) =
   MTix (toMTixModule <$> xs)
   where
-    toMTixModule (TixModule n h i ticks) = MTixModule n h i (addTicker <$> ticks)
-    addTicker x = [(ticker, x)]
+    toMTixModule (TixModule n h i ticks) =
+      MTixModule n h i (tick prop <$> ticks)
 
+----------------------------------------
 -- Merging MTixs
+
 mergeMTixs :: [MTix] -> MTix
 mergeMTixs [] = error "mergeMTixs: empty input"
 mergeMTixs xs = foldr1 mergeMTix xs
@@ -81,13 +91,17 @@ mergeMTix (MTix ts1) (MTix ts2) =
 
 mergeMTixModule :: MTixModule -> MTixModule -> MTixModule
 mergeMTixModule (MTixModule n1 h1 i1 tks1) (MTixModule n2 h2 i2 tks2)
-  | n1 == n2 && h1 == h2 =
-      MTixModule n1 h1 (i1 + i2) (zipWith (<>) tks1 tks2)
+  | n1 == n2 && h1 == h2 && i1 == i2 =
+      MTixModule n1 h1 i1 (zipWith (<>) tks1 tks2)
   | otherwise =
       error $ "mergeMTixs: hash " <> show (h1, h2) <>
-              " or module name "  <> show (n1, n2) <> " mismatch"
+              " or module name "  <> show (n1, n2) <>
+              " or list size "    <> show (i1, i2) <>
+              " mismatch"
 
+----------------------------------------
 -- Projection over specific properties
+
 projectMTix :: [String] -> MTix -> MTix
 projectMTix props (MTix ts) = MTix (projectMTixModule props <$> ts)
 
@@ -97,3 +111,22 @@ projectMTixModule props (MTixModule n h i tks) =
 
 projectTicksCount :: [String] -> TicksCount -> TicksCount
 projectTicksCount props = filter ((`elem` props) . fst)
+
+----------------------------------------
+-- Expression coverage calculation
+
+expCoverMTix :: FilePath -> MTix -> IO [(String, Double)]
+expCoverMTix path (MTix mods) = mapM (expCoverMTixModule path) mods
+
+expCoverMTixModule :: FilePath -> MTixModule -> IO (String, Double)
+expCoverMTixModule path (MTixModule name hash size tix) = do
+  Mix _ _ _ _ mix  <- readMix [path] (Left (takeFileName name)) -- this is a simplification!
+  let (cov, tot) = foldr expCover (0,0) (zip mix tix)
+  let coverage = (fromIntegral cov * 100) / fromIntegral tot
+  return (name, coverage)
+
+expCover :: (MixEntry, TicksCount) -> (Integer, Integer) -> (Integer, Integer)
+expCover ((_, ExpBox _), ticks) (cov, tot)
+  | ticksTotal ticks > 0  = (cov+1, tot+1)
+  | otherwise             = (cov,   tot+1)
+expCover _ (cov, tot)     = (cov,   tot)
