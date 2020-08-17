@@ -4,6 +4,7 @@ module MTix.Seq.Map where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import System.FilePath
+import Data.List
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -59,6 +60,9 @@ mtixModuleHash (MTixModule _ h  _ _) = h
 
 mtixModuleTixs :: MTixModule -> [TicksCount]
 mtixModuleTixs (MTixModule  _ _ _ tixs) = tixs
+
+mtixModules :: MTix -> [String]
+mtixModules (MTix mods) = mtixModuleName <$> mods
 
 ----------------------------------------
 -- Reading and merging MTixs
@@ -120,15 +124,17 @@ projectTicksCount props ticks = Map.restrictKeys ticks (Set.fromList props)
 ----------------------------------------
 -- Expression coverage calculation
 
-expCoverMTix :: FilePath -> MTix -> IO [(String, Double)]
-expCoverMTix path (MTix mods) = mapM (expCoverMTixModule path) mods
+expCoverMTix :: [(String, Mix)] -> MTix -> [(String, Double)]
+expCoverMTix mixs (MTix mods) = do
+  expCoverMTixModule mixs <$> mods
 
-expCoverMTixModule :: FilePath -> MTixModule -> IO (String, Double)
-expCoverMTixModule path (MTixModule name hash size tix) = do
-  Mix _ _ _ _ mix  <- readMix [path] (Left (takeFileName name)) -- this is a simplification!
-  let (cov, tot) = foldr expCover (0,0) (zip mix tix)
-  let coverage = (fromIntegral cov * 100) / fromIntegral tot
-  return (name, coverage)
+expCoverMTixModule :: [(String, Mix)] -> MTixModule -> (String, Double)
+expCoverMTixModule mixs (MTixModule name hash size tix) = do
+  (name, (fromIntegral cov * 100) / fromIntegral tot)
+  where
+    (cov, tot) = foldr expCover (0,0) (zip mix tix)
+    Just (Mix _ _ _ _ mix)  = lookup (takeFileName name) mixs
+    mixName (Mix m _ _ _ _) = takeFileName m
 
 expCover :: (MixEntry, TicksCount) -> (Integer, Integer) -> (Integer, Integer)
 expCover ((_, ExpBox _), ticks) (cov, tot)

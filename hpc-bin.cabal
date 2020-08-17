@@ -60,12 +60,15 @@ executable bench
     MTix.Seq.List
     MTix.Seq.Map
     MTix.Seq.Seq
-    -- MTixParRead
-    -- MTixParMerge1
-    -- MTixParMerge2
-    -- MTixParReadMerge1
-    -- MTixParProject1
-    -- MTixParProject2
+    MTix.Par.Types
+    MTix.Par.Read
+    MTix.Par.Merge1
+    MTix.Par.Merge2
+    MTix.Par.Merge3
+    MTix.Par.Project1
+    MTix.Par.Project2
+    MTix.Par.Coverage1
+    MTix.Par.Coverage2
   ghc-options:
     -O2
     -threaded
