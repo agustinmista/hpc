@@ -234,58 +234,68 @@ parallelBenchmarks = do
   !bst_mixs       <- force <$> readMixs (mixDir "bst")       (mtixModules bst_mtix)
 
   ----------------------------------------
-  putStrLn "******* Benchmarking readMTixs"
-  let csv = resultsDir </> "par" </> "readMTixs" <.> show cores <.> "csv"
-  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-    [ benchReadMTixs' "ParRead/xmonad"    ParRead.readMTixs xmonad
-    , benchReadMTixs' "ParRead/primitive" ParRead.readMTixs primitive
-    , benchReadMTixs' "ParRead/bst"       ParRead.readMTixs bst
-    ]
+
+  -- putStrLn "******* Benchmarking readMTixs"
+  -- let csv = resultsDir </> "par" </> "readMTixs" <.> show cores <.> "csv"
+  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+  --   [ benchReadMTixs' "ParRead/xmonad"    ParRead.readMTixs xmonad
+  --   , benchReadMTixs' "ParRead/primitive" ParRead.readMTixs primitive
+  --   , benchReadMTixs' "ParRead/bst"       ParRead.readMTixs bst
+  --   ]
+ 
+  -- withDelaysIO ParRead.readMTixs primitive
 
   ----------------------------------------
-  putStrLn "******* Benchmarking mergeMTixs"
-  let csv = resultsDir </> "par" </> "mergeMTixs" <.> show cores <.> "csv"
-  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-    [ benchMergeMTixs' "Merge1/xmonad"    ParMerge1.mergeMTixs xmonad_mtixs
-    , benchMergeMTixs' "Merge1/primitive" ParMerge1.mergeMTixs primitive_mtixs
-    , benchMergeMTixs' "Merge1/bst"       ParMerge1.mergeMTixs bst_mtixs
-    , benchMergeMTixs' "Merge2/xmonad"    ParMerge2.mergeMTixs xmonad_mtixs
-    , benchMergeMTixs' "Merge2/primitive" ParMerge2.mergeMTixs primitive_mtixs
-    , benchMergeMTixs' "Merge2/bst"       ParMerge2.mergeMTixs bst_mtixs
-    , benchMergeMTixs' "Merge3/xmonad"    ParMerge3.mergeMTixs xmonad_mtixs
-    , benchMergeMTixs' "Merge3/primitive" ParMerge3.mergeMTixs primitive_mtixs
-    , benchMergeMTixs' "Merge3/bst"       ParMerge3.mergeMTixs bst_mtixs
-    ]
+  
+  -- putStrLn "******* Benchmarking mergeMTixs"
+  -- let csv = resultsDir </> "par" </> "mergeMTixs" <.> show cores <.> "csv"
+  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+  --   [ benchMergeMTixs' "Merge1/xmonad"    ParMerge1.mergeMTixs xmonad_mtixs
+  --   , benchMergeMTixs' "Merge1/primitive" ParMerge1.mergeMTixs primitive_mtixs
+  --   , benchMergeMTixs' "Merge1/bst"       ParMerge1.mergeMTixs bst_mtixs
+  --   , benchMergeMTixs' "Merge2/xmonad"    ParMerge2.mergeMTixs xmonad_mtixs
+  --   , benchMergeMTixs' "Merge2/primitive" ParMerge2.mergeMTixs primitive_mtixs
+  --   , benchMergeMTixs' "Merge2/bst"       ParMerge2.mergeMTixs bst_mtixs
+  --   , benchMergeMTixs' "Merge3/xmonad"    ParMerge3.mergeMTixs xmonad_mtixs
+  --   , benchMergeMTixs' "Merge3/primitive" ParMerge3.mergeMTixs primitive_mtixs
+  --   , benchMergeMTixs' "Merge3/bst"       ParMerge3.mergeMTixs bst_mtixs
+  --   ]
+  
+  -- withDelays ParMerge1.mergeMTixs primitive_mtixs
+  withDelays ParMerge2.mergeMTixs primitive_mtixs
+  -- withDelays ParMerge3.mergeMTixs primitive_mtixs
 
   ----------------------------------------
-  putStrLn "******* Benchmarking projectMTix"
-  let csv = resultsDir </> "par" </> "projectMTix" <.> show cores <.> "csv"
-  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-    [ benchProjectMTix' "ParProject1/xmonad"    ParProject1.projectMTix xmonad    xmonad_mtix
-    , benchProjectMTix' "ParProject1/primitive" ParProject1.projectMTix primitive primitive_mtix
-    , benchProjectMTix' "ParProject1/bst"       ParProject1.projectMTix bst       bst_mtix
-    , benchProjectMTix' "ParProject2/xmonad"    ParProject2.projectMTix xmonad    xmonad_mtix
-    , benchProjectMTix' "ParProject2/primitive" ParProject2.projectMTix primitive primitive_mtix
-    , benchProjectMTix' "ParProject2/bst"       ParProject2.projectMTix bst       bst_mtix
-    ]
+  
+  -- putStrLn "******* Benchmarking projectMTix"
+  -- let csv = resultsDir </> "par" </> "projectMTix" <.> show cores <.> "csv"
+  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+  --   [ benchProjectMTix' "ParProject1/xmonad"    ParProject1.projectMTix xmonad    xmonad_mtix
+  --   , benchProjectMTix' "ParProject1/primitive" ParProject1.projectMTix primitive primitive_mtix
+  --   , benchProjectMTix' "ParProject1/bst"       ParProject1.projectMTix bst       bst_mtix
+  --   , benchProjectMTix' "ParProject2/xmonad"    ParProject2.projectMTix xmonad    xmonad_mtix
+  --   , benchProjectMTix' "ParProject2/primitive" ParProject2.projectMTix primitive primitive_mtix
+  --   , benchProjectMTix' "ParProject2/bst"       ParProject2.projectMTix bst       bst_mtix
+  --   ]
 
   -- withDelays (ParProject1.projectMTix (take (length primitive `div` 2) primitive)) primitive_mtix
   -- withDelays (ParProject2.projectMTix (take (length primitive `div` 2) primitive)) primitive_mtix
 
   ----------------------------------------
-  putStrLn "******* Benchmarking expCoverMTix"
-  let csv = resultsDir </> "par" </> "expCoverMTix" <.> show cores <.> "csv"
-  defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
-    [ benchExpCoverMTix "ParCoverage1/xmonad"    ParCoverage1.expCoverMTix xmonad_mixs    xmonad_mtix
-    , benchExpCoverMTix "ParCoverage1/primitive" ParCoverage1.expCoverMTix primitive_mixs primitive_mtix
-    , benchExpCoverMTix "ParCoverage1/bst"       ParCoverage1.expCoverMTix bst_mixs       bst_mtix
-    , benchExpCoverMTix "ParCoverage2/xmonad"    ParCoverage2.expCoverMTix xmonad_mixs    xmonad_mtix
-    , benchExpCoverMTix "ParCoverage2/primitive" ParCoverage2.expCoverMTix primitive_mixs primitive_mtix
-    , benchExpCoverMTix "ParCoverage2/bst"       ParCoverage2.expCoverMTix bst_mixs       bst_mtix
-    ]
+  
+  -- putStrLn "******* Benchmarking expCoverMTix"
+  -- let csv = resultsDir </> "par" </> "expCoverMTix" <.> show cores <.> "csv"
+  -- defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
+  --   [ benchExpCoverMTix "ParCoverage1/xmonad"    ParCoverage1.expCoverMTix xmonad_mixs    xmonad_mtix
+  --   , benchExpCoverMTix "ParCoverage1/primitive" ParCoverage1.expCoverMTix primitive_mixs primitive_mtix
+  --   , benchExpCoverMTix "ParCoverage1/bst"       ParCoverage1.expCoverMTix bst_mixs       bst_mtix
+  --   , benchExpCoverMTix "ParCoverage2/xmonad"    ParCoverage2.expCoverMTix xmonad_mixs    xmonad_mtix
+  --   , benchExpCoverMTix "ParCoverage2/primitive" ParCoverage2.expCoverMTix primitive_mixs primitive_mtix
+  --   , benchExpCoverMTix "ParCoverage2/bst"       ParCoverage2.expCoverMTix bst_mixs       bst_mtix
+  --   ]
 
-  -- withDelays (ParCoverage1.expCoverMTix xmonad_mixs) xmonad_mtix
-  -- withDelays (ParCoverage2.expCoverMTix xmonad_mixs) xmonad_mtix
+  -- withDelays (ParCoverage1.expCoverMTix primitive_mixs) primitive_mtix
+  -- withDelays (ParCoverage2.expCoverMTix primitive_mixs) primitive_mtix
 
 ----------------------------------------
 -- Run an operation with some delays to make it easy to spot its boundaries in threadscope
@@ -295,6 +305,14 @@ withDelays op input = do
   !input' <- return (force input)
   threadDelay 1000000
   !res <- return (force (op input))
+  threadDelay 1000000
+  print (rnf res)
+
+withDelaysIO :: (NFData a, NFData b) => (a -> IO b) -> a -> IO ()
+withDelaysIO op input = do
+  !input' <- return (force input)
+  threadDelay 1000000
+  !res <- force <$> op input
   threadDelay 1000000
   print (rnf res)
 
