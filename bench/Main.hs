@@ -151,7 +151,7 @@ sequentialBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking readMTixs"
-  let csv = resultsDir </> "readMTixs" <.> show cores <.> "csv"
+  let csv = resultsDir </> "seq" </> "readMTixs" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchReadMTixs "SeqList/xmonad"    SeqList.readMTixs xmonad
     , benchReadMTixs "SeqList/primitive" SeqList.readMTixs primitive
@@ -166,7 +166,7 @@ sequentialBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking mergeMTixs"
-  let csv = resultsDir </> "mergeMTixs" <.> show cores <.> "csv"
+  let csv = resultsDir </> "seq" </> "mergeMTixs" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchMergeMTixs "SeqList/xmonad"    SeqList.mergeMTixs xmonad_seq_list
     , benchMergeMTixs "SeqList/primitive" SeqList.mergeMTixs primitive_seq_list
@@ -181,7 +181,7 @@ sequentialBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking projectMTixs"
-  let csv = resultsDir </> "projectMTix" <.> show cores <.> "csv"
+  let csv = resultsDir </> "seq" </> "projectMTix" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchProjectMTix "SeqList/xmonad"    SeqList.projectMTix xmonad    xmonad_seq_list_mtix
     , benchProjectMTix "SeqList/primitive" SeqList.projectMTix primitive primitive_seq_list_mtix
@@ -196,7 +196,7 @@ sequentialBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking coverageMTix"
-  let csv = resultsDir </> "coverageMTix" <.> show cores <.> "csv"
+  let csv = resultsDir </> "seq" </> "coverageMTix" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
 
     [ benchExpCoverMTix "SeqList/xmonad"    SeqList.expCoverMTix xmonad_mixs    xmonad_seq_list_mtix
@@ -235,7 +235,7 @@ parallelBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking readMTixs"
-  let csv = resultsDir </> "readMTixs" <.> show cores <.> "csv"
+  let csv = resultsDir </> "par" </> "readMTixs" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchReadMTixs' "ParRead/xmonad"    ParRead.readMTixs xmonad
     , benchReadMTixs' "ParRead/primitive" ParRead.readMTixs primitive
@@ -244,7 +244,7 @@ parallelBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking mergeMTixs"
-  let csv = resultsDir </> "mergeMTixs" <.> show cores <.> "csv"
+  let csv = resultsDir </> "par" </> "mergeMTixs" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchMergeMTixs' "Merge1/xmonad"    ParMerge1.mergeMTixs xmonad_mtixs
     , benchMergeMTixs' "Merge1/primitive" ParMerge1.mergeMTixs primitive_mtixs
@@ -259,7 +259,7 @@ parallelBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking projectMTix"
-  let csv = resultsDir </> "projectMTix" <.> show cores <.> "csv"
+  let csv = resultsDir </> "par" </> "projectMTix" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchProjectMTix' "ParProject1/xmonad"    ParProject1.projectMTix xmonad    xmonad_mtix
     , benchProjectMTix' "ParProject1/primitive" ParProject1.projectMTix primitive primitive_mtix
@@ -274,7 +274,7 @@ parallelBenchmarks = do
 
   ----------------------------------------
   putStrLn "******* Benchmarking expCoverMTix"
-  let csv = resultsDir </> "expCoverMTix" <.> show cores <.> "csv"
+  let csv = resultsDir </> "par" </> "expCoverMTix" <.> show cores <.> "csv"
   defaultMainWith defaultConfig { csvFile = Just csv } $ concat $
     [ benchExpCoverMTix "ParCoverage1/xmonad"    ParCoverage1.expCoverMTix xmonad_mixs    xmonad_mtix
     , benchExpCoverMTix "ParCoverage1/primitive" ParCoverage1.expCoverMTix primitive_mixs primitive_mtix
