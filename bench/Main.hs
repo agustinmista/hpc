@@ -217,21 +217,21 @@ parallelBenchmarks = do
 
   cores     <- getNumCapabilities
 
-  xmonad    <- listTixFiles "xmonad"
+  -- xmonad    <- listTixFiles "xmonad"
   primitive <- listTixFiles "primitive"
-  bst       <- listTixFiles "bst"
+  -- bst       <- listTixFiles "bst"
 
-  !xmonad_mtixs    <- force <$> ParRead.readMTixs xmonad
+  -- !xmonad_mtixs    <- force <$> ParRead.readMTixs xmonad
   !primitive_mtixs <- force <$> ParRead.readMTixs primitive
-  !bst_mtixs       <- force <$> ParRead.readMTixs bst
+  -- !bst_mtixs       <- force <$> ParRead.readMTixs bst
 
-  !xmonad_mtix    <- return (force (ParMerge2.mergeMTixs xmonad_mtixs))
-  !primitive_mtix <- return (force (ParMerge2.mergeMTixs primitive_mtixs))
-  !bst_mtix       <- return (force (ParMerge2.mergeMTixs bst_mtixs))
+  -- !xmonad_mtix    <- return (force (ParMerge2.mergeMTixs xmonad_mtixs))
+  -- !primitive_mtix <- return (force (ParMerge2.mergeMTixs primitive_mtixs))
+  -- !bst_mtix       <- return (force (ParMerge2.mergeMTixs bst_mtixs))
 
-  !xmonad_mixs    <- force <$> readMixs (mixDir "xmonad")    (mtixModules xmonad_mtix)
-  !primitive_mixs <- force <$> readMixs (mixDir "primitive") (mtixModules primitive_mtix)
-  !bst_mixs       <- force <$> readMixs (mixDir "bst")       (mtixModules bst_mtix)
+  -- !xmonad_mixs    <- force <$> readMixs (mixDir "xmonad")    (mtixModules xmonad_mtix)
+  -- !primitive_mixs <- force <$> readMixs (mixDir "primitive") (mtixModules primitive_mtix)
+  -- !bst_mixs       <- force <$> readMixs (mixDir "bst")       (mtixModules bst_mtix)
 
   ----------------------------------------
 
