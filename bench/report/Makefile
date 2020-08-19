@@ -111,9 +111,9 @@ $(BASE).$(OUTEXT): %.$(OUTEXT): %.$(SRCEXT) $(TEXFILES) $(BIBFILES) \
 				$(BINFIGS) $(GRAPHS) $(IMAGES) $(ALWAYS)
 	test ! -s $*.aux || $(BIBTEX) $* || rm -f $*.aux $*.bbl
 	$(LATEX) $< || ! rm -f $@
-	if $(UNDEFINED); then \
-		$(BIBTEX) $* && $(LATEX) $< || ! rm -f $*.bbl $@; \
-	fi
+# if $(UNDEFINED); then \
+# 	$(BIBTEX) $* && $(LATEX) $< || ! rm -f $*.bbl $@; \
+# fi
 	! $(RERUN) || $(LATEX) $< || ! rm -f $@
 	! $(RERUN) || $(LATEX) $< || ! rm -f $@
 ifeq ($(PDF),pdf)

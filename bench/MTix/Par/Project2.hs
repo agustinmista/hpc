@@ -36,7 +36,7 @@ projectTicksCount props ticks = Map.restrictKeys ticks (Set.fromList props)
 ----------------------------------------
 -- Parallel combinators
 
-parSeqMapChunk :: Strategy (Seq a) -> Int -> (a -> a) -> Seq a -> Seq a
+parSeqMapChunk :: Strategy (Seq b) -> Int -> (a -> b) -> Seq a -> Seq b
 parSeqMapChunk s n f xs =
   concatSeqs (fmap (fmap f) chunks `using` parTraversable s)
   where
