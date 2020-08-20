@@ -65,6 +65,7 @@ executable bench
     MTix.Par.Merge1
     MTix.Par.Merge2
     MTix.Par.Merge3
+    MTix.Par.Merge4
     MTix.Par.Project1
     MTix.Par.Project2
     MTix.Par.Coverage1
